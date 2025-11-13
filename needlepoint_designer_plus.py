@@ -100,7 +100,7 @@ def safe_save_csv_dialog(root, initial):
     )
 
 # ============================================================
-#  CANVAS RENDERING (SINGLE BIG IMAGE)
+#  RENDER STITCH GRID AS IMAGE
 # ============================================================
 
 def render_pattern_image(arr, cell_px, numbered=True, symbols=False, palette_map=None):
@@ -108,7 +108,6 @@ def render_pattern_image(arr, cell_px, numbered=True, symbols=False, palette_map
     w = len(arr[0])
     img = Image.new("RGB", (w*cell_px, h*cell_px), (255,255,255))
     draw = ImageDraw.Draw(img)
-
     font = ImageFont.load_default()
 
     for y in range(h):
@@ -133,42 +132,65 @@ def render_pattern_image(arr, cell_px, numbered=True, symbols=False, palette_map
                 )
 
     if numbered:
-        # every 10th row
         for y in range(0,h,10):
-            draw.line((0, y*cell_px, w*cell_px, y*cell_px), fill=(0,0,0))
-            draw.text((2, y*cell_px+2), str(y), fill=(0,0,0), font=font)
+            draw.line((0,y*cell_px,w*cell_px,y*cell_px), fill=(0,0,0))
+            draw.text((2,y*cell_px+2), str(y), fill=(0,0,0), font=font)
 
-        # every 10th col
         for x in range(0,w,10):
-            draw.line((x*cell_px, 0, x*cell_px, h*cell_px), fill=(0,0,0))
-            draw.text((x*cell_px+2, 2), str(x), fill=(0,0,0), font=font)
+            draw.line((x*cell_px,0,x*cell_px,h*cell_px), fill=(0,0,0))
+            draw.text((x*cell_px+2,2), str(x), fill=(0,0,0), font=font)
 
     return img
 
 # ============================================================
-#  PDF TILING (Letter, 1/4-inch overlap)
+#  FIXED PDF EXPORT — NO CLIPPING, MARGINS + PAGE NUMBERS
 # ============================================================
 
 def export_tiled_pdf(big_img, filename):
     dpi = 300
-    letter_w = 2550  # 8.5 * 300
-    letter_h = 3300  # 11 * 300
+    PAGE_W = int(8.5 * dpi)
+    PAGE_H = int(11 * dpi)
 
-    overlap = int(0.25 * dpi)  # 1/4 inch
+    MARGIN = int(0.25 * dpi)
 
-    w,h = big_img.size
+    usable_w = PAGE_W - MARGIN*2
+    usable_h = PAGE_H - MARGIN*2
+
+    bw, bh = big_img.size
 
     pages = []
+    page_index = 1
+
     y0 = 0
-    while y0 < h:
+    while y0 < bh:
         x0 = 0
-        y1 = min(y0 + letter_h + overlap, h)
-        while x0 < w:
-            x1 = min(x0 + letter_w + overlap, w)
+        while x0 < bw:
+
+            x1 = min(x0 + usable_w, bw)
+            y1 = min(y0 + usable_h, bh)
             crop = big_img.crop((x0, y0, x1, y1))
-            pages.append(crop)
-            x0 += letter_w
-        y0 += letter_h
+
+            page = Image.new("RGB", (PAGE_W, PAGE_H), "white")
+
+            page.paste(crop, (MARGIN, MARGIN))
+
+            draw = ImageDraw.Draw(page)
+            border_box = (MARGIN, MARGIN, MARGIN + crop.width, MARGIN + crop.height)
+            draw.rectangle(border_box, outline=(0,0,0), width=3)
+
+            font = ImageFont.load_default()
+            draw.text(
+                (PAGE_W - MARGIN - 120, PAGE_H - MARGIN - 40),
+                f"Page {page_index}",
+                fill=(0,0,0),
+                font=font
+            )
+
+            pages.append(page)
+            page_index += 1
+
+            x0 += usable_w
+        y0 += usable_h
 
     if pages:
         pages[0].save(filename, save_all=True, append_images=pages[1:])
@@ -194,7 +216,7 @@ class App:
         frm = ttk.Frame(root, padding=12)
         frm.grid(row=0,column=0,sticky="nsew")
 
-        # FILE
+        # FILE INPUT
         row = ttk.Frame(frm)
         row.grid(row=0,column=0,columnspan=2,sticky="ew")
         ttk.Label(row,text="Image:").pack(side="left")
@@ -222,7 +244,7 @@ class App:
         ttk.Button(sfrm,text="Generate Preview",command=self.generate_preview).grid(row=7,column=0,pady=10)
         ttk.Button(sfrm,text="Export PDFs + CSV",command=self.export_all).grid(row=8,column=0,pady=10)
 
-        # PREVIEW AREA
+        # PREVIEW
         self.preview_label = ttk.Label(frm)
         self.preview_label.grid(row=1,column=1,sticky="nsew")
 
@@ -283,12 +305,10 @@ class App:
 
         arr = self.grid_arr
 
-        # Build palette index
         flat = [tuple(px) for row in arr for px in row]
         counts = Counter(flat)
         sorted_cols = [c for c,k in counts.most_common()]
 
-        # Map colors to symbols
         palette_map = {}
         for i, col in enumerate(sorted_cols):
             palette_map[col] = SYMBOLS[i]
@@ -308,15 +328,13 @@ class App:
                     dmc_code, dmc_name = nearest_dmc(col) if self.include_dmc.get() else ("","")
                     f.write(f"{sym},{r},{g},{b},{hx},{dmc_code},{dmc_name}\n")
 
-        # EXPORT PDFs
+        # EXPORT COLOR CHART
         cell_px = self.cell_px.get()
-
-        # Color chart
         if self.export_color.get():
             big = render_pattern_image(arr, cell_px, numbered=True, symbols=False)
             export_tiled_pdf(big, os.path.join(outdir, base + "_color.pdf"))
 
-        # Symbols
+        # EXPORT SYMBOL CHART
         if self.export_symbols.get():
             bigs = render_pattern_image(arr, cell_px, numbered=True, symbols=True, palette_map=palette_map)
             export_tiled_pdf(bigs, os.path.join(outdir, base + "_symbols.pdf"))
