@@ -2,21 +2,34 @@ import os
 import math
 import csv
 from collections import Counter
-from tkinter import Tk, StringVar, BooleanVar, IntVar, filedialog
+
+from tkinter import (
+    Tk, StringVar, BooleanVar, IntVar, filedialog
+)
 from tkinter import ttk
+
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 
+
 # ============================================================
-#  GLOBAL DMC PALETTE LOADER
+#  GLOBAL DMC PALETTE
 # ============================================================
 
 DMC_PALETTE = []  # list of dicts: number, name, type, r, g, b
 
+
 def load_dmc_palette(csv_path="dmc_palette_full.csv"):
-    """Load full DMC palette (all families) from CSV if present."""
+    """
+    Load full DMC palette (all families) from CSV if present.
+
+    CSV columns:
+    number,name,r,g,b,type
+    """
     global DMC_PALETTE
     DMC_PALETTE = []
+
     if not os.path.exists(csv_path):
+        # No palette file is fine — app still runs, just no DMC mapping
         return
 
     with open(csv_path, newline="", encoding="utf-8-sig") as f:
@@ -29,23 +42,27 @@ def load_dmc_palette(csv_path="dmc_palette_full.csv"):
                 g = int(float(row["g"]))
                 b = int(float(row["b"]))
                 t = str(row.get("type", "regular")).strip().lower() or "regular"
-                DMC_PALETTE.append({
-                    "number": num,
-                    "name": name,
-                    "type": t,
-                    "r": r,
-                    "g": g,
-                    "b": b,
-                })
+                DMC_PALETTE.append(
+                    {
+                        "number": num,
+                        "name": name,
+                        "type": t,
+                        "r": r,
+                        "g": g,
+                        "b": b,
+                    }
+                )
             except Exception:
-                # skip bad rows silently
+                # Skip malformed rows silently
                 continue
+
 
 def nearest_dmc(rgb, allow_specialty=True):
     """
     Find nearest DMC color in loaded palette.
-    If allow_specialty=False → only 'regular' rows are used.
-    Returns (number, name, type) or ("","","") if no palette loaded.
+
+    If allow_specialty == False -> only 'regular' rows used.
+    Returns (number, name, type) or ("", "", "") if no palette.
     """
     if not DMC_PALETTE:
         return ("", "", "")
@@ -60,7 +77,7 @@ def nearest_dmc(rgb, allow_specialty=True):
         dr = r - row["r"]
         dg = g - row["g"]
         db = b - row["b"]
-        d = dr*dr + dg*dg + db*db
+        d = dr * dr + dg * dg + db * db
         if d < bestd:
             bestd = d
             best = row
@@ -69,21 +86,26 @@ def nearest_dmc(rgb, allow_specialty=True):
         return ("", "", "")
     return (best["number"], best["name"], best["type"])
 
+
 def rgb_to_hex(rgb):
     return "#{:02X}{:02X}{:02X}".format(*rgb)
 
+
 # ============================================================
-#  BASIC SYMBOL SET (UNCHANGED)
+#  SYMBOL SET (DMC-STYLE)
 # ============================================================
 
+# DMC-ish shapes first, then backups
 SYMBOLS = (
-    ["●","■","▲","◆","○","□","△","◇","✚","✖","✦","✱","✳","✷","✽","♠","♣","♥","♦","⌂"] +
-    list("+x*/\\#@&%$=^~<>") +
-    list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+    ["●", "○", "■", "□", "▲", "△", "◆", "◇",
+     "/", "\\", "x", "+", "-", "=", "*", "#",
+     "◼", "◻", "◊", "◯", "¤", "■", "▣", "▢"]
+    + list("ABCDEFGHIJKLMNOQRSTUVWXYZ")
 )
 
+
 # ============================================================
-#  IMAGE REDUCTION
+#  IMAGE REDUCTION (image -> small palette grid)
 # ============================================================
 
 def quantize_image(img, out_w, out_h, colors):
@@ -91,94 +113,149 @@ def quantize_image(img, out_w, out_h, colors):
     img_p = img_small.convert("P", palette=Image.ADAPTIVE, colors=colors)
     return img_p.convert("RGB")
 
+
 # ============================================================
-#  SAFE FILE DIALOGS FOR MACOS
+#  SAFE FILE DIALOGS (macOS-friendly)
 # ============================================================
 
 def safe_open_file_dialog(root):
     return filedialog.askopenfilename(
         parent=root,
-        title="Select an image file",
+        title="Select image",
         initialdir=os.path.expanduser("~"),
         filetypes=[
             ("PNG", "*.png"),
-            ("JPEG", "*.jpg;*.jpeg"),
-            ("WebP", "*.webp"),
-            ("Bitmap", "*.bmp"),
-            ("All Files", "*.*")
-        ]
+            ("JPG", "*.jpg"),
+            ("JPEG", "*.jpeg"),
+            ("WEBP", "*.webp"),
+            ("BMP", "*.bmp"),
+            ("All Files", "*"),
+        ],
     )
 
+
 def safe_save_base_dialog(root, initial_base):
-    """Ask once, then derive _color.pdf, _symbols.pdf, _legend.csv, etc."""
+    """
+    Ask once where to save, then derive _color.pdf, _symbols.pdf, _legend.csv.
+    """
     path = filedialog.asksaveasfilename(
         parent=root,
-        title="Save pattern (base name)",
+        title="Save Pattern",
+        initialdir=os.path.expanduser("~"),
         defaultextension=".pdf",
         initialfile=f"{initial_base}_pattern.pdf",
-        filetypes=[("PDF file", "*.pdf")]
+        filetypes=[
+            ("PDF", "*.pdf"),
+            ("All Files", "*"),
+        ],
     )
     if not path:
         return None
+
     base_root, _ = os.path.splitext(path)
     return base_root
 
+
 # ============================================================
-#  RENDER STITCH GRID AS IMAGE
+#  RENDER STITCH GRID AS IMAGE (COLOR or SYMBOL)
 # ============================================================
 
+def _measure_text(draw, text, font):
+    """
+    Pillow 10+ dropped textsize(). Use textbbox with a fallback.
+    """
+    try:
+        bbox = draw.textbbox((0, 0), text, font=font)
+        tw = bbox[2] - bbox[0]
+        th = bbox[3] - bbox[1]
+        return tw, th
+    except Exception:
+        # Very old Pillow fallback
+        try:
+            return draw.textsize(text, font=font)
+        except Exception:
+            return (len(text) * 6, 10)
+
+
 def render_pattern_image(arr, cell_px, numbered=True, symbols=False, palette_map=None):
+    """
+    arr: 2D list of RGB tuples
+    symbols: if True, use palette_map[rgb] as symbol instead of color blocks
+    """
     h = len(arr)
     w = len(arr[0])
-    img = Image.new("RGB", (w*cell_px, h*cell_px), (255,255,255))
+    img = Image.new("RGB", (w * cell_px, h * cell_px), (255, 255, 255))
     draw = ImageDraw.Draw(img)
     font = ImageFont.load_default()
 
     for y in range(h):
         for x in range(w):
+            color = arr[y][x]
+            x0 = x * cell_px
+            y0 = y * cell_px
+            x1 = x0 + cell_px
+            y1 = y0 + cell_px
+
             if symbols:
-                sym = palette_map[arr[y][x]]
+                sym = palette_map[color]
+                # White cell background + light grid
                 draw.rectangle(
-                    (x*cell_px, y*cell_px, x*cell_px+cell_px, y*cell_px+cell_px),
-                    fill=(255,255,255),
-                    outline=(200,200,200)
+                    (x0, y0, x1, y1),
+                    fill=(255, 255, 255),
+                    outline=(200, 200, 200),
                 )
-                tw, th = draw.textsize(sym, font=font)
+                tw, th = _measure_text(draw, sym, font)
                 draw.text(
-                    (x*cell_px+(cell_px-tw)//2, y*cell_px+(cell_px-th)//2),
-                    sym, fill=(0,0,0), font=font
+                    (x0 + (cell_px - tw) // 2, y0 + (cell_px - th) // 2),
+                    sym,
+                    fill=(0, 0, 0),
+                    font=font,
                 )
             else:
+                # solid color cells with dark grid
                 draw.rectangle(
-                    (x*cell_px, y*cell_px, x*cell_px+cell_px, y*cell_px+cell_px),
-                    fill=arr[y][x],
-                    outline=(60,60,60)
+                    (x0, y0, x1, y1),
+                    fill=color,
+                    outline=(60, 60, 60),
                 )
 
     if numbered:
-        # bold grid every 10
+        # thick grid line every 10 and coordinate labels
         for y in range(0, h, 10):
-            draw.line((0, y*cell_px, w*cell_px, y*cell_px), fill=(0,0,0), width=2)
-            draw.text((2, y*cell_px+2), str(y), fill=(255,255,255), font=font)
+            ypix = y * cell_px
+            draw.line((0, ypix, w * cell_px, ypix), fill=(0, 0, 0), width=2)
+            label = str(y)
+            tw, th = _measure_text(draw, label, font)
+            draw.rectangle((2, ypix + 2, 2 + tw + 2, ypix + 2 + th), fill=(0, 0, 0))
+            draw.text((4, ypix + 2), label, fill=(255, 255, 255), font=font)
 
         for x in range(0, w, 10):
-            draw.line((x*cell_px, 0, x*cell_px, h*cell_px), fill=(0,0,0), width=2)
-            draw.text((x*cell_px+2, 2), str(x), fill=(255,255,255), font=font)
+            xpix = x * cell_px
+            draw.line((xpix, 0, xpix, h * cell_px), fill=(0, 0, 0), width=2)
+            label = str(x)
+            tw, th = _measure_text(draw, label, font)
+            draw.rectangle((xpix + 2, 2, xpix + 2 + tw + 2, 2 + th), fill=(0, 0, 0))
+            draw.text((xpix + 4, 2), label, fill=(255, 255, 255), font=font)
 
     return img
 
+
 # ============================================================
-#  PDF EXPORT (COLOR/SYMBOL) – WITH MARGINS + PAGES
+#  PDF EXPORT (multi-page, margins, border, page numbers)
 # ============================================================
 
 def export_tiled_pdf(big_img, filename):
+    """
+    Takes a large pattern image and tiles it onto multiple 8.5x11 pages,
+    with margins and border boxes. Saves as a multi-page PDF using Pillow.
+    """
     dpi = 300
     PAGE_W = int(8.5 * dpi)
     PAGE_H = int(11 * dpi)
 
-    MARGIN = int(0.75 * dpi)   # 0.75" safe margin
-    usable_w = PAGE_W - MARGIN*2
-    usable_h = PAGE_H - MARGIN*2
+    MARGIN = int(0.75 * dpi)      # 0.75" safe margin
+    usable_w = PAGE_W - MARGIN * 2
+    usable_h = PAGE_H - MARGIN * 2
 
     bw, bh = big_img.size
 
@@ -193,7 +270,7 @@ def export_tiled_pdf(big_img, filename):
             y1 = min(y0 + usable_h, bh)
             crop = big_img.crop((x0, y0, x1, y1))
 
-            # shrink a bit for nicer preview/printing
+            # Slightly shrink for breathing room inside the box
             scale = 0.9
             cw = int(crop.width * scale)
             ch = int(crop.height * scale)
@@ -201,19 +278,21 @@ def export_tiled_pdf(big_img, filename):
 
             page = Image.new("RGB", (PAGE_W, PAGE_H), "white")
 
-            # center within margins
-            ox = MARGIN + (usable_w - cw)//2
-            oy = MARGIN + (usable_h - ch)//2
+            ox = MARGIN + (usable_w - cw) // 2
+            oy = MARGIN + (usable_h - ch) // 2
             page.paste(crop_scaled, (ox, oy))
 
             draw = ImageDraw.Draw(page)
-            border_box = (ox, oy, ox+cw, oy+ch)
-            draw.rectangle(border_box, outline=(0,0,0), width=2)
-
             font = ImageFont.load_default()
+
+            # Border box around stitched area
+            border_box = (ox, oy, ox + cw, oy + ch)
+            draw.rectangle(border_box, outline=(0, 0, 0), width=2)
+
+            # Page number at top center
             text = f"Page {page_index}"
-            tw, th = draw.textsize(text, font=font)
-            draw.text((PAGE_W//2 - tw//2, 20), text, fill=(0,0,0), font=font)
+            tw, th = _measure_text(draw, text, font)
+            draw.text((PAGE_W // 2 - tw // 2, 20), text, fill=(0, 0, 0), font=font)
 
             pages.append(page)
             page_index += 1
@@ -224,13 +303,18 @@ def export_tiled_pdf(big_img, filename):
     if pages:
         pages[0].save(filename, save_all=True, append_images=pages[1:])
 
+
 def build_page_preview_image(big_img, title="Pattern Preview"):
-    dpi = 150  # smaller for fast preview
+    """
+    Build a single-page, letter-sized preview image with margins + border.
+    Used for the 1-page preview window.
+    """
+    dpi = 150
     PAGE_W = int(8.5 * dpi)
     PAGE_H = int(11 * dpi)
     MARGIN = int(0.75 * dpi)
-    usable_w = PAGE_W - MARGIN*2
-    usable_h = PAGE_H - MARGIN*2
+    usable_w = PAGE_W - MARGIN * 2
+    usable_h = PAGE_H - MARGIN * 2
 
     bw, bh = big_img.size
     scale = min(usable_w / bw, usable_h / bh, 1.0)
@@ -239,20 +323,22 @@ def build_page_preview_image(big_img, title="Pattern Preview"):
     crop_scaled = big_img.resize((cw, ch), Image.NEAREST)
 
     page = Image.new("RGB", (PAGE_W, PAGE_H), "white")
-    ox = MARGIN + (usable_w - cw)//2
-    oy = MARGIN + (usable_h - ch)//2
+    ox = MARGIN + (usable_w - cw) // 2
+    oy = MARGIN + (usable_h - ch) // 2
     page.paste(crop_scaled, (ox, oy))
 
     draw = ImageDraw.Draw(page)
     font = ImageFont.load_default()
 
-    border_box = (ox, oy, ox+cw, oy+ch)
-    draw.rectangle(border_box, outline=(0,0,0), width=2)
+    border_box = (ox, oy, ox + cw, oy + ch)
+    draw.rectangle(border_box, outline=(0, 0, 0), width=2)
 
-    draw.text((MARGIN, PAGE_H - MARGIN + 5), title, fill=(0,0,0), font=font)
-    draw.text((PAGE_W//2 - 20, 20), "Page 1", fill=(0,0,0), font=font)
+    # Title + "Page 1"
+    draw.text((MARGIN, PAGE_H - MARGIN + 5), title, fill=(0, 0, 0), font=font)
+    draw.text((PAGE_W // 2 - 20, 20), "Page 1", fill=(0, 0, 0), font=font)
 
     return page
+
 
 # ============================================================
 #  GUI APP
@@ -261,7 +347,7 @@ def build_page_preview_image(big_img, title="Pattern Preview"):
 class App:
     def __init__(self, root):
         self.root = root
-        root.title("Needlepoint Pattern Designer — DMC Edition (macOS safe)")
+        root.title("Needlepoint Pattern Designer — DMC Pro Edition (macOS safe)")
 
         self.img_path = StringVar(value="")
         self.grid_max = IntVar(value=160)
@@ -271,19 +357,19 @@ class App:
         self.include_dmc = BooleanVar(value=True)
         self.export_color = BooleanVar(value=True)
         self.export_symbols = BooleanVar(value=True)
-        self.regular_only = BooleanVar(value=False)  # if True: restrict mapping to regular cotton
+        self.regular_only = BooleanVar(value=False)  # if True: only regular cotton DMC
 
         frm = ttk.Frame(root, padding=12)
         frm.grid(row=0, column=0, sticky="nsew")
 
-        # File row
+        # ---- File row ----
         row = ttk.Frame(frm)
         row.grid(row=0, column=0, columnspan=2, sticky="ew")
         ttk.Label(row, text="Image:").pack(side="left")
         ttk.Entry(row, textvariable=self.img_path, width=70).pack(side="left", padx=6)
         ttk.Button(row, text="Browse", command=self.browse).pack(side="left")
 
-        # Settings panel
+        # ---- Settings panel ----
         sfrm = ttk.Frame(frm)
         sfrm.grid(row=1, column=0, sticky="nw")
 
@@ -297,16 +383,26 @@ class App:
         ttk.Entry(sfrm, textvariable=self.cell_px, width=8).grid(row=2, column=1)
 
         ttk.Checkbutton(sfrm, text="Keep aspect ratio", variable=self.keep_aspect).grid(row=3, column=0, sticky="w")
-        ttk.Checkbutton(sfrm, text="Include DMC match", variable=self.include_dmc).grid(row=4, column=0, sticky="w")
-        ttk.Checkbutton(sfrm, text="Export Color Chart", variable=self.export_color).grid(row=5, column=0, sticky="w")
-        ttk.Checkbutton(sfrm, text="Export Symbol Chart", variable=self.export_symbols).grid(row=6, column=0, sticky="w")
-        ttk.Checkbutton(sfrm, text="Limit to regular cotton only", variable=self.regular_only).grid(row=7, column=0, sticky="w")
+        ttk.Checkbutton(sfrm, text="Include DMC mapping", variable=self.include_dmc).grid(row=4, column=0, sticky="w")
+        ttk.Checkbutton(sfrm, text="Export Color Chart PDF", variable=self.export_color).grid(row=5, column=0, sticky="w")
+        ttk.Checkbutton(sfrm, text="Export Symbol Chart PDF", variable=self.export_symbols).grid(row=6, column=0, sticky="w")
+        ttk.Checkbutton(
+            sfrm,
+            text="Limit DMC mapping to regular cotton only",
+            variable=self.regular_only,
+        ).grid(row=7, column=0, sticky="w", columnspan=2)
 
-        ttk.Button(sfrm, text="Generate Preview", command=self.generate_preview).grid(row=8, column=0, pady=10, sticky="w")
-        ttk.Button(sfrm, text="Export PDFs + CSV", command=self.export_all).grid(row=9, column=0, pady=6, sticky="w")
-        ttk.Button(sfrm, text="1-Page Preview", command=self.preview_one_page).grid(row=10, column=0, pady=6, sticky="w")
+        ttk.Button(sfrm, text="Generate Preview", command=self.generate_preview).grid(
+            row=8, column=0, pady=10, sticky="w"
+        )
+        ttk.Button(sfrm, text="Export PDFs + CSV", command=self.export_all).grid(
+            row=9, column=0, pady=6, sticky="w"
+        )
+        ttk.Button(sfrm, text="1-Page Preview", command=self.preview_one_page).grid(
+            row=10, column=0, pady=6, sticky="w"
+        )
 
-        # Preview area
+        # ---- Preview area ----
         self.preview_label = ttk.Label(frm)
         self.preview_label.grid(row=1, column=1, sticky="nsew")
 
@@ -376,6 +472,7 @@ class App:
         flat = [tuple(px) for row in arr for px in row]
         counts = Counter(flat)
         sorted_cols = [c for c, _ in counts.most_common()]
+
         palette_map = {}
         for i, col in enumerate(sorted_cols):
             sym = SYMBOLS[i % len(SYMBOLS)]
@@ -402,7 +499,7 @@ class App:
 
         allow_specialty = not self.regular_only.get()
 
-        # LEGEND CSV
+        # ---- LEGEND CSV ----
         with open(csv_path, "w", newline="", encoding="utf-8") as f:
             f.write("symbol,r,g,b,hex,dmc_code,dmc_name,dmc_type,stitches\n")
             for col in sorted_cols:
@@ -416,16 +513,18 @@ class App:
                     d_code = d_name = d_type = ""
 
                 st = counts[col]
-                f.write(f"{sym},{r},{g},{b},{hx},{d_code},{d_name},{d_type},{st}\n")
+                f.write(
+                    f"{sym},{r},{g},{b},{hx},{d_code},{d_name},{d_type},{st}\n"
+                )
 
         cell_px = self.cell_px.get()
 
-        # COLOR PDF
+        # ---- COLOR PDF ----
         if self.export_color.get():
             big = render_pattern_image(arr, cell_px, numbered=True, symbols=False)
             export_tiled_pdf(big, color_pdf_path)
 
-        # SYMBOL PDF
+        # ---- SYMBOL PDF ----
         if self.export_symbols.get():
             bigs = render_pattern_image(arr, cell_px, numbered=True, symbols=True, palette_map=palette_map)
             export_tiled_pdf(bigs, symbols_pdf_path)
@@ -437,9 +536,10 @@ class App:
 
     # ---------------------------
     def preview_one_page(self):
-        """Show:
-           A) full-map color preview (zoomed out)
-           B) page-style preview (Letter page with margins/border)
+        """
+        Show:
+          A) full-map color preview (zoomed out)
+          B) page-style preview (Letter layout)
         """
         if self.grid_arr is None:
             self.root.title("Generate preview first.")
@@ -475,12 +575,14 @@ class App:
         full_canvas.configure(image=self._preview_full_img)
         page_canvas.configure(image=self._preview_page_img)
 
+
 # ============================================================
 #  MAIN
 # ============================================================
 
 if __name__ == "__main__":
-    load_dmc_palette("dmc_palette_full.csv")  # safe if missing
+    # Load DMC palette if CSV is present; app still works without it.
+    load_dmc_palette("dmc_palette_full.csv")
 
     root = Tk()
     style = ttk.Style()
@@ -488,6 +590,7 @@ if __name__ == "__main__":
         style.theme_use("clam")
     except Exception:
         pass
+
     App(root)
     root.minsize(1000, 600)
     root.mainloop()
