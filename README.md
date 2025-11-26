@@ -1,7 +1,10 @@
 # Digital Loom: Image-to-Needlepoint Pattern Generator
+<br>
 
 > Digital Loom is a standalone desktop tool that converts any image into a full needlepoint, cross-stitch, or tapestry pattern.
 It creates a clean, printable chart with DMC color matching, symbol maps, stitch gridlines, and optional PDF + CSV exports.
+
+<br> 
 
 This version includes:
 
@@ -15,6 +18,8 @@ This version includes:
 - Toplevel window fix for multi-preview mode
 
 Digital Loom is built for creators who want fast, high-quality needlepoint or cross-stitch patterns without relying on paid software or online converters. Everything runs locally on your computer.
+
+<br> 
 
 ## Features
 ### Image Processing
@@ -63,7 +68,9 @@ CSV legend including:
 - One-page PDF preview window
 - Safe file dialogs for macOS, Windows, and Linux
 
-### Installation
+<br> 
+
+## Installation
 ```
 Install Python 3.12+
 
@@ -109,10 +116,12 @@ Optional: use 1-Page Preview to preview the printable page layout.
 ## File Structure
 ```
 digital_loom/
+  demo_images/
+  google-sheets-apps-script/
   needlepoint_designer_plus.py
+  dmc_color_palette.xlsx
+  dmc_color_palette_full.csv
   dmc_palette_full.csv
-  dmc_palette_full.csv
-
   README.md
 ```
 
