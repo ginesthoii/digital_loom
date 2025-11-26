@@ -13,3 +13,6 @@
 
 <img width="372" height="577" alt="Image" src="https://github.com/user-attachments/assets/e26e2ca3-dfb3-45af-90bb-ebe9617d7355" />
 
+## DMC Google Sheets 
+
+<img width="1145" height="710" alt="Image" src="https://github.com/user-attachments/assets/2e08c43e-d346-4251-8716-6e27be7afaa8" />
