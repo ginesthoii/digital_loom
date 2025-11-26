@@ -1,153 +1,152 @@
-# LICENSE AGREEMENT
-
+# LICENSE AGREEMENT — ZERO PERMISSION LICENSE  
 ## Copyright © 2025 Olivia Griffin (“Licensor”)
-> **All rights reserved.** <br>
+**All rights reserved.**
 
-This repository and all associated materials—including but not limited to source code, binaries, firmware, AI models, datasets, documentation, designs, CAD/STL files, diagrams, images, text, branding, concepts, and any derivative digital or physical assets (collectively, the “Work”)—are proprietary and fully owned by the Licensor.
-By accessing, viewing, downloading, cloning, or interacting with the Work in any capacity, you agree to the following terms in full.
+This Work is proprietary.  
+You are permitted to **view** it and **nothing more**.
 
+Accessing, downloading, cloning, forking, copying, modifying, reproducing, distributing, or using the Work in any form is strictly prohibited unless you have explicit written permission signed by the Licensor.
 
+---
 
-## 1. Intellectual Property Rights
+## 1. No Rights Granted
 
-The Licensor retains exclusive ownership of all intellectual property rights in the Work, including:
-	- implementation
-  - design
-  - architecture
-  - structure
-  - hardware layouts
-  - schematics
-  - firmware
-  - datasets
-  - AI model files
-  - training configurations
-  - images, textures, fonts
-  - CAD/STL/3D assets
-  - diagrams, documentation, and manuals
-  - trade dress and branding
-  - all non-public ideas and concepts
+You are **not** granted any rights to:
 
-No rights or licenses are granted unless explicitly provided in writing and signed by the Licensor.
+- use  
+- copy  
+- save  
+- download  
+- fork  
+- clone  
+- modify  
+- translate  
+- adapt  
+- distribute  
+- publish  
+- integrate  
+- embed  
+- sell  
+- rent  
+- license  
+- reference  
+- imitate  
+- reverse-engineer  
+- derive from  
+- create works inspired by  
+- build upon  
 
+**None. Zero.**
 
+The Work may be viewed but not used in any capacity.
 
-## 2. Prohibited Actions
+---
 
-Unless you have prior written permission, you may NOT:
-  - copy, fork, clone, mirror, or replicate the Work
-  - modify, adapt, rewrite, or translate the Work
-  - redistribute or publish any portion of the Work
-  - host or reupload the Work on any platform
-  - incorporate any part of the Work into your own project
-  - include the Work in AI training sets, datasets, corpora, or ML pipelines
-  - analyze the Work for competitive replication
-  - create derivative works, variations, or “inspired by” implementations
-  - use the Work’s architecture, design system, or data schema to build your own
-  - create commercial products or services based on this Work
-  - upload, submit, or contribute modifications or pull requests
-  - disassemble, decompile, reverse-engineer, or extract underlying logic
-  - embed the Work in hardware devices, software products, or cloud services
+## 2. No Derivatives or Inspired Works
 
-Any attempt to bypass, alter, or ignore these restrictions is a violation of this Agreement.
+You may not:
 
+- create derivative works  
+- create “inspired by” variations  
+- reuse ideas, concepts, structures, layouts, names, workflows, or designs  
+- replicate patterns, architectures, schemas, or logic  
+- reconstruct or imitate any element of the Work  
 
+Even partial or indirect reuse is prohibited.
 
-## 3. Commercial Use, Reverse Engineering & Derivatives
+---
 
-Without explicit written permission, you may NOT:
-	-	use the Work for commercial, business, academic, research, or paid purposes
-	-	sell, license, rent, or monetize any portion of the Work
-	-	use the Work as a template or reference for your own systems
-	-	build competing versions, forks, or “similar tools”
-	-	reconstruct or imitate the internal designs, styles, or methods
-	-	extract datasets, assets, algorithms, or visual forms
-	-	reuse even small portions of the Work (e.g., a function, a diagram, a module)
+## 3. No AI, ML, Dataset, or Automation Use
 
-This includes both direct and indirect usage—such as recreating a system guided by the structure of this Work.
+You may **not**:
 
+- train AI models on the Work  
+- embed the Work in datasets  
+- include the Work in corpora  
+- generate embeddings or vector indexes  
+- extract text, code, assets, diagrams, or metadata for machine learning  
+- fine-tune, prompt-tune, or instruct models with any part of the Work  
 
+Any AI-related use is automatically considered unauthorized copying.
 
-## 4. AI & Dataset Restrictions
+---
 
-You may NOT:
-  - use the Work in any AI model training
-  - embed the Work in machine learning datasets
-  - fine-tune models using the Work
-  - extract text, code, assets, or metadata for LLM use
-  - convert parts of the Work into embeddings or vector indexes
-  - use the Work to generate AI-assisted derivatives
+## 4. No Hardware, CAD, or Maker Use
 
-These actions are considered unauthorized reproduction and directly violate this license.
+You may **not**:
 
+- print, fabricate, manufacture, or reproduce physical items  
+- use CAD, STL, OBJ, STEP, or any 3D models  
+- reproduce circuits, schematics, PCBs, wiring, housings, or assemblies  
+- implement engineering layouts, mechanical designs, or hardware patterns  
 
+Digital or physical reproduction is prohibited.
 
-## 5. Hardware, Maker, CAD, & Engineering Restrictions
+---
 
-You may NOT:
-  - reproduce hardware designs, schematics, PCB layouts, or wiring diagrams
-  - export, sell, print, or manufacture physical objects based on the Work
-  - use 3D models (STL, OBJ, STEP, etc.) for printing or remixing
-  - replicate circuits, sensors, housings, or mechanical assemblies
-  - reproduce book-nook designs, engineering layouts, or fabrication notes
+## 5. No Security, Software, or Tooling Use
 
-The Work is proprietary both in digital and physical form.
+You may **not**:
 
+- reuse code in security tools, scanners, dashboards, or automation  
+- integrate logic, patterns, or UI/UX components into other software  
+- analyze the Work for competitive development  
 
+All security-related structures and code are fully protected.
 
-## 6. Security Tools & Software Restrictions
+---
 
-You may NOT:
-  - reuse any part of this Work within penetration tools, scanners, or automation
-  - create similar dashboards, workflows, modules, or patterns
-  - analyze the Work for replication or competitive development
-  - use the Work in commercial cybersecurity products
+## 6. No Commercial or Educational Use
 
-All security-related architecture and logic are protected.
+You may **not** use the Work for:
 
+- business  
+- academic research  
+- teaching  
+- training  
+- consulting  
+- commercial products or services  
 
+Monetary or institutional use is forbidden.
 
-## 7. Enforcement & Legal Remedies
+---
+
+## 7. Enforcement
 
 Violating this Agreement constitutes infringement. The Licensor may pursue:
-  - DMCA takedowns
-  - removal of infringing content
-  - civil litigation for damages
-  - injunctions to halt use
-  - recovery of attorney’s fees (where permitted)
-  - demands for destruction of derivative copies
 
-Compliance is mandatory regardless of jurisdiction or host platform.
+- DMCA takedowns  
+- removal requests  
+- cease-and-desist orders  
+- civil litigation for damages  
+- injunctive relief  
+- attorney’s fees (where permitted)  
 
+You must destroy all copies—digital or physical—upon request.
 
+---
 
-## 8. Access Does Not Grant Rights
+## 8. Warranty Disclaimer
 
-Viewing or accessing the Work does not grant permission to:
-  - use
-  - copy
-  - modify
-  - distribute
-  - integrate
-  - build upon
+The Work is provided **“as is”** with zero warranties.  
+The Licensor is not liable for any consequences resulting from viewing or misuse.
 
-Any contributions require explicit written approval and transfer full rights and ownership to the Licensor unless otherwise negotiated.
+---
 
+## 9. Governing Law
 
-## 9. Warranty Disclaimer
+This Agreement is governed by the laws of the Licensor’s state or country of residence.  
+All disputes will be resolved exclusively in that jurisdiction.
 
-The Work is provided “as is” with no guarantees or warranties of any kind.
-The Licensor is not liable for any damages, losses, or consequences resulting from the use or misuse of the Work.
+---
 
+## 10. Acceptance
 
+By viewing this Work in any form, you acknowledge that:
 
-## 10. Future Modifications
+- you have read this Agreement  
+- you understand it  
+- you are bound by it  
+- you have no rights to the Work  
 
-The Licensor may modify or update this Agreement at any time.
-Continued access or use after such modifications constitutes acceptance of the updated terms.
-
-
-
-## 11. Governing Law
-
-This Agreement is governed by the laws of the Licensor’s state or country of residence.
-All disputes must be resolved exclusively in that jurisdiction.
+If you disagree, stop viewing immediately.
