@@ -1,5 +1,4 @@
 import os
-import math
 import csv
 from collections import Counter
 
@@ -7,6 +6,7 @@ from tkinter import (
     Tk, StringVar, BooleanVar, IntVar, filedialog
 )
 from tkinter import ttk
+import tkinter as tk
 
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 
@@ -95,11 +95,10 @@ def rgb_to_hex(rgb):
 #  SYMBOL SET (DMC-STYLE)
 # ============================================================
 
-# DMC-ish shapes first, then backups
 SYMBOLS = (
     ["●", "○", "■", "□", "▲", "△", "◆", "◇",
      "/", "\\", "x", "+", "-", "=", "*", "#",
-     "◼", "◻", "◊", "◯", "¤", "■", "▣", "▢"]
+     "◼", "◻", "◊", "◯", "¤", "▣", "▢"]
     + list("ABCDEFGHIJKLMNOQRSTUVWXYZ")
 )
 
@@ -157,7 +156,7 @@ def safe_save_base_dialog(root, initial_base):
 
 
 # ============================================================
-#  RENDER STITCH GRID AS IMAGE (COLOR or SYMBOL)
+#  TEXT MEASUREMENT (Pillow 10+ safe)
 # ============================================================
 
 def _measure_text(draw, text, font):
@@ -170,12 +169,15 @@ def _measure_text(draw, text, font):
         th = bbox[3] - bbox[1]
         return tw, th
     except Exception:
-        # Very old Pillow fallback
         try:
             return draw.textsize(text, font=font)
         except Exception:
             return (len(text) * 6, 10)
 
+
+# ============================================================
+#  RENDER STITCH GRID AS IMAGE (COLOR or SYMBOL)
+# ============================================================
 
 def render_pattern_image(arr, cell_px, numbered=True, symbols=False, palette_map=None):
     """
@@ -241,101 +243,119 @@ def render_pattern_image(arr, cell_px, numbered=True, symbols=False, palette_map
 
 
 # ============================================================
-#  PDF EXPORT (multi-page, margins, border, page numbers)
+#  SINGLE-PAGE PDF EXPORT (AUTO-FIT, NO CLIPPING)
 # ============================================================
 
-def export_tiled_pdf(big_img, filename):
+def export_single_page_pdf(big_img, filename, margin_inches=0.5, dpi=300):
     """
-    Takes a large pattern image and tiles it onto multiple 8.5x11 pages,
-    with margins and border boxes. Saves as a multi-page PDF using Pillow.
+    Puts the entire pattern on a single Letter page:
+    - auto orientation (portrait vs landscape)
+    - 0.5" margins
+    - scaled so nothing touches the page edge
     """
-    dpi = 300
-    PAGE_W = int(8.5 * dpi)
-    PAGE_H = int(11 * dpi)
-
-    MARGIN = int(0.75 * dpi)      # 0.75" safe margin
-    usable_w = PAGE_W - MARGIN * 2
-    usable_h = PAGE_H - MARGIN * 2
-
     bw, bh = big_img.size
+    if bw <= 0 or bh <= 0:
+        return
 
-    pages = []
-    page_index = 1
+    aspect = bw / bh if bh != 0 else 1.0
 
-    y0 = 0
-    while y0 < bh:
-        x0 = 0
-        while x0 < bw:
-            x1 = min(x0 + usable_w, bw)
-            y1 = min(y0 + usable_h, bh)
-            crop = big_img.crop((x0, y0, x1, y1))
+    # US Letter, orientation based on image
+    if aspect >= 1.0:
+        page_w_in, page_h_in = 11.0, 8.5   # landscape
+    else:
+        page_w_in, page_h_in = 8.5, 11.0   # portrait
 
-            # Slightly shrink for breathing room inside the box
-            scale = 0.9
-            cw = int(crop.width * scale)
-            ch = int(crop.height * scale)
-            crop_scaled = crop.resize((cw, ch), Image.NEAREST)
+    page_w = int(page_w_in * dpi)
+    page_h = int(page_h_in * dpi)
 
-            page = Image.new("RGB", (PAGE_W, PAGE_H), "white")
+    margin_px = int(margin_inches * dpi)
+    usable_w = page_w - 2 * margin_px
+    usable_h = page_h - 2 * margin_px
 
-            ox = MARGIN + (usable_w - cw) // 2
-            oy = MARGIN + (usable_h - ch) // 2
-            page.paste(crop_scaled, (ox, oy))
+    if usable_w <= 0 or usable_h <= 0:
+        usable_w = page_w
+        usable_h = page_h
 
-            draw = ImageDraw.Draw(page)
-            font = ImageFont.load_default()
+    # Scale to fit inside usable area, then shrink slightly for safety
+    raw_scale = min(usable_w / bw, usable_h / bh)
+    scale = min(raw_scale, 1.0) * 0.95  # 95% to guarantee no edge clipping
 
-            # Border box around stitched area
-            border_box = (ox, oy, ox + cw, oy + ch)
-            draw.rectangle(border_box, outline=(0, 0, 0), width=2)
-
-            # Page number at top center
-            text = f"Page {page_index}"
-            tw, th = _measure_text(draw, text, font)
-            draw.text((PAGE_W // 2 - tw // 2, 20), text, fill=(0, 0, 0), font=font)
-
-            pages.append(page)
-            page_index += 1
-
-            x0 += usable_w
-        y0 += usable_h
-
-    if pages:
-        pages[0].save(filename, save_all=True, append_images=pages[1:])
-
-
-def build_page_preview_image(big_img, title="Pattern Preview"):
-    """
-    Build a single-page, letter-sized preview image with margins + border.
-    Used for the 1-page preview window.
-    """
-    dpi = 150
-    PAGE_W = int(8.5 * dpi)
-    PAGE_H = int(11 * dpi)
-    MARGIN = int(0.75 * dpi)
-    usable_w = PAGE_W - MARGIN * 2
-    usable_h = PAGE_H - MARGIN * 2
-
-    bw, bh = big_img.size
-    scale = min(usable_w / bw, usable_h / bh, 1.0)
     cw = int(bw * scale)
     ch = int(bh * scale)
-    crop_scaled = big_img.resize((cw, ch), Image.NEAREST)
 
-    page = Image.new("RGB", (PAGE_W, PAGE_H), "white")
-    ox = MARGIN + (usable_w - cw) // 2
-    oy = MARGIN + (usable_h - ch) // 2
-    page.paste(crop_scaled, (ox, oy))
+    page = Image.new("RGB", (page_w, page_h), "white")
+    ox = (page_w - cw) // 2
+    oy = (page_h - ch) // 2
+
+    resized = big_img.resize((cw, ch), Image.NEAREST)
+    page.paste(resized, (ox, oy))
 
     draw = ImageDraw.Draw(page)
     font = ImageFont.load_default()
 
+    # Border box around stitched area
     border_box = (ox, oy, ox + cw, oy + ch)
     draw.rectangle(border_box, outline=(0, 0, 0), width=2)
 
-    # Title + "Page 1"
-    draw.text((MARGIN, PAGE_H - MARGIN + 5), title, fill=(0, 0, 0), font=font)
-    draw.text((PAGE_W // 2 - 20, 20), "Page 1", fill=(0, 0, 0), font=font)
+    # Page label
+    text = "Page 1"
+    tw, th = _measure_text(draw, text, font)
+    draw.text((page_w // 2 - tw // 2, 20), text, fill=(0, 0, 0), font=font)
+
+    page.save(filename)
+
+
+def build_page_preview_image(big_img, title="Pattern Preview", margin_inches=0.5, dpi=150):
+    """
+    Build a single-page, letter-sized preview image with margins + border.
+    Uses same auto-fit logic as the PDF, just at lower DPI for speed.
+    """
+    bw, bh = big_img.size
+    if bw <= 0 or bh <= 0:
+        return Image.new("RGB", (600, 400), "white")
+
+    aspect = bw / bh if bh != 0 else 1.0
+
+    if aspect >= 1.0:
+        page_w_in, page_h_in = 11.0, 8.5   # landscape
+    else:
+        page_w_in, page_h_in = 8.5, 11.0   # portrait
+
+    page_w = int(page_w_in * dpi)
+    page_h = int(page_h_in * dpi)
+
+    margin_px = int(margin_inches * dpi)
+    usable_w = page_w - 2 * margin_px
+    usable_h = page_h - 2 * margin_px
+
+    raw_scale = min(usable_w / bw, usable_h / bh)
+    scale = min(raw_scale, 1.0) * 0.95
+
+    cw = int(bw * scale)
+    ch = int(bh * scale)
+
+    page = Image.new("RGB", (page_w, page_h), "white")
+    ox = (page_w - cw) // 2
+    oy = (page_h - ch) // 2
+
+    resized = big_img.resize((cw, ch), Image.NEAREST)
+    page.paste(resized, (ox, oy))
+
+    draw = ImageDraw.Draw(page)
+    font = ImageFont.load_default()
+
+    # Border
+    border_box = (ox, oy, ox + cw, oy + ch)
+    draw.rectangle(border_box, outline=(0, 0, 0), width=2)
+
+    # Title + page label
+    if title:
+        tw, th = _measure_text(draw, title, font)
+        draw.text((margin_px, page_h - margin_px + 5), title, fill=(0, 0, 0), font=font)
+
+    label = "Page 1"
+    tw, th = _measure_text(draw, label, font)
+    draw.text((page_w // 2 - tw // 2, 20), label, fill=(0, 0, 0), font=font)
 
     return page
 
@@ -519,15 +539,15 @@ class App:
 
         cell_px = self.cell_px.get()
 
-        # ---- COLOR PDF ----
+        # ---- COLOR PDF (single page, auto-fit) ----
         if self.export_color.get():
             big = render_pattern_image(arr, cell_px, numbered=True, symbols=False)
-            export_tiled_pdf(big, color_pdf_path)
+            export_single_page_pdf(big, color_pdf_path, margin_inches=0.5, dpi=300)
 
-        # ---- SYMBOL PDF ----
+        # ---- SYMBOL PDF (single page, auto-fit) ----
         if self.export_symbols.get():
             bigs = render_pattern_image(arr, cell_px, numbered=True, symbols=True, palette_map=palette_map)
-            export_tiled_pdf(bigs, symbols_pdf_path)
+            export_single_page_pdf(bigs, symbols_pdf_path, margin_inches=0.5, dpi=300)
 
         self.root.title(
             f"Exported: {os.path.basename(color_pdf_path)}, "
@@ -539,7 +559,7 @@ class App:
         """
         Show:
           A) full-map color preview (zoomed out)
-          B) page-style preview (Letter layout)
+          B) page-style preview (Letter layout, auto-fit)
         """
         if self.grid_arr is None:
             self.root.title("Generate preview first.")
@@ -556,9 +576,9 @@ class App:
         full_preview = big.resize((int(big.width * scale), int(big.height * scale)), Image.NEAREST)
 
         # Page-style preview
-        page_preview = build_page_preview_image(big, title="Pattern 1-page preview")
+        page_preview = build_page_preview_image(big, title="Pattern 1-page preview", margin_inches=0.5, dpi=150)
 
-        win = ttk.Toplevel(self.root)
+        win = tk.Toplevel(self.root)
         win.title("1-Page Previews")
 
         ttk.Label(win, text="Full pattern map (zoomed out):").pack()
