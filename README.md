@@ -1,4 +1,12 @@
-# Digital Loom: Image-to-Needlepoint Pattern Generator
+
+<p align="center">
+<img width="490" height="150" alt="Image" src="https://github.com/user-attachments/assets/248d6860-cb9a-44d0-af48-0eecb1f47cbe" alt="Banner""/>
+  
+
+</p>
+
+<h1 align="center">Digital Loom: Image-to-Needlepoint Pattern Generator</h1>
+
 <br>
 
 > Digital Loom is a standalone desktop tool that converts any image into a full needlepoint, cross-stitch, or tapestry pattern.
